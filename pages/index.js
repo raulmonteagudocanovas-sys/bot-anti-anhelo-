@@ -10,8 +10,68 @@ const PREGUNTAS = [
     clave: 'nombre',
   },
   {
+    id: 'edad',
+    bot: (d) => `${d.nombre}, bien.\n\nUna cosa antes de entrar en materia. ¿En qué etapa vital estás ahora mismo?`,
+    tipo: 'opciones',
+    opciones: [
+      { v: '20s', t: 'Tengo entre 20 y 29 años. Estoy construyendo mi camino.' },
+      { v: '30s', t: 'Tengo entre 30 y 39 años. Siento que el tiempo apremia.' },
+      { v: '40s', t: 'Tengo entre 40 y 49 años. Necesito un cambio real, ya.' },
+      { v: '50mas', t: 'Tengo 50 o más. He visto mucho y sé que puedo más.' },
+    ],
+    clave: 'edad',
+  },
+  {
+    id: 'laboral',
+    bot: '¿Cuál es tu situación laboral ahora mismo?',
+    tipo: 'opciones',
+    opciones: [
+      { v: 'empleado', t: 'Empleado. Trabajo para otra persona o empresa.' },
+      { v: 'autonomo', t: 'Autónomo o empresario. Trabajo para mí mismo.' },
+      { v: 'busqueda', t: 'En búsqueda de trabajo o en transición profesional.' },
+      { v: 'otro', t: 'Otra situación — estudiante, cuidador, retirado.' },
+    ],
+    clave: 'laboral',
+  },
+  {
+    id: 'contexto_personal',
+    bot: (d) => `Entendido, ${d.nombre}.\n\n¿Tienes pareja, hijos u otras personas que dependan de ti en este momento?`,
+    tipo: 'opciones',
+    opciones: [
+      { v: 'solo', t: 'No. Estoy solo y tengo libertad total.' },
+      { v: 'pareja', t: 'Tengo pareja pero sin hijos.' },
+      { v: 'familia', t: 'Tengo familia — pareja, hijos o personas a mi cargo.' },
+      { v: 'responsabilidades', t: 'Tengo personas dependientes aunque no sea pareja o hijos.' },
+    ],
+    clave: 'contexto_personal',
+  },
+  {
+    id: 'energia',
+    bot: 'Sé honesto aquí. ¿Cómo describirías tu energía y tu sueño en general?',
+    tipo: 'opciones',
+    opciones: [
+      { v: 'bien', t: 'Duermo bien y tengo energía suficiente para el día.' },
+      { v: 'irregular', t: 'Irregular. Hay días buenos y días en que estoy por los suelos.' },
+      { v: 'agotado', t: 'Cronicamente agotado. Me levanto cansado y así sigo todo el día.' },
+      { v: 'insomnio', t: 'Problemas de sueño. La cabeza no para ni por la noche.' },
+    ],
+    clave: 'energia',
+  },
+  {
+    id: 'lectura_previa',
+    bot: (d) => `${d.nombre}, ¿has leído antes libros de desarrollo personal o has hecho cursos de este tipo?`,
+    tipo: 'opciones',
+    opciones: [
+      { v: 'no', t: 'No. Este es mi primer contacto real con esto.' },
+      { v: 'algo', t: 'He leído alguna cosa pero sin aplicarlo de verdad.' },
+      { v: 'bastante', t: 'Sí, bastante. Sé mucho en teoría pero no lo traslado a mi vida.' },
+      { v: 'experto', t: 'Mucho. He consumido de todo y sigo igual o casi igual.' },
+    ],
+    clave: 'lectura_previa',
+  },
+  {
     id: 'situacion',
-    bot: (d) => `${d.nombre}, bien.\n\nSin rodeos. ¿Cuál de estas frases describe mejor lo que estás viviendo ahora mismo?`,
+    bot: 'Sin rodeos. ¿Cuál de estas frases describe mejor lo que estás viviendo ahora mismo?',
     tipo: 'opciones',
     opciones: [
       { v: 'paralisis', t: 'Sé exactamente lo que tengo que hacer. Y no lo hago.' },
@@ -25,7 +85,7 @@ const PREGUNTAS = [
   },
   {
     id: 'impacto',
-    bot: (d) => `Entendido, ${d.nombre}.\n\n¿En qué parte de tu vida lo notas más?`,
+    bot: (d) => `¿En qué parte de tu vida lo notas más, ${d.nombre}?`,
     tipo: 'opciones',
     opciones: [
       { v: 'trabajo', t: 'En el trabajo o mis proyectos personales.' },
@@ -36,8 +96,20 @@ const PREGUNTAS = [
     clave: 'impacto',
   },
   {
+    id: 'intentos_pasados',
+    bot: '¿Qué has intentado cambiar antes y cuánto duró?',
+    tipo: 'opciones',
+    opciones: [
+      { v: 'nada', t: 'Nada en serio. He pensado en cambiar pero no he actuado.' },
+      { v: 'dias', t: 'He intentado cosas pero duran días, una semana máximo.' },
+      { v: 'meses', t: 'He mantenido cambios meses, pero siempre vuelvo al punto de partida.' },
+      { v: 'ciclos', t: 'Llevo años en ciclos de mejora y recaída. Ya casi no lo intento.' },
+    ],
+    clave: 'intentos_pasados',
+  },
+  {
     id: 'tiempo',
-    bot: '¿Cuánto tiempo llevas así?',
+    bot: '¿Cuánto tiempo llevas con este patrón?',
     tipo: 'opciones',
     opciones: [
       { v: 'reciente', t: 'Pocos meses. Es algo relativamente nuevo.' },
@@ -78,10 +150,8 @@ async function generarPDF(datos, diag) {
 
   function addPage() {
     doc.addPage();
-    doc.setFillColor(13, 13, 13);
-    doc.rect(0, 0, W, H, 'F');
-    doc.setFillColor(201, 168, 76);
-    doc.rect(0, 0, 4, H, 'F');
+    doc.setFillColor(13, 13, 13); doc.rect(0, 0, W, H, 'F');
+    doc.setFillColor(201, 168, 76); doc.rect(0, 0, 4, H, 'F');
   }
 
   function wrapText(txt, x, y, maxW, fs, color) {
@@ -93,10 +163,7 @@ async function generarPDF(datos, diag) {
   }
 
   function checkPage(cy, needed) {
-    if (cy + needed > H - 20) {
-      addPage();
-      return mg + 10;
-    }
+    if (cy + needed > H - 20) { addPage(); return mg + 10; }
     return cy;
   }
 
@@ -104,28 +171,22 @@ async function generarPDF(datos, diag) {
   doc.setFillColor(13, 13, 13); doc.rect(0, 0, W, H, 'F');
   doc.setFillColor(201, 168, 76); doc.rect(0, 0, W, 5, 'F'); doc.rect(0, H - 5, W, 5, 'F');
   doc.setFillColor(201, 168, 76); doc.rect(0, 0, 4, H, 'F');
-
   doc.setTextColor(201, 168, 76); doc.setFontSize(7); doc.setFont('helvetica', 'normal');
   doc.text('INFORME DE DIAGNÓSTICO PERSONAL · MÉTODO CAUSA & EFECTO', W / 2, 24, { align: 'center' });
-
   doc.setTextColor(245, 244, 240); doc.setFontSize(40); doc.setFont('helvetica', 'bold');
   doc.text('CAUSA', W / 2, 82, { align: 'center' });
   doc.setTextColor(201, 168, 76); doc.text('&', W / 2, 99, { align: 'center' });
   doc.setTextColor(245, 244, 240); doc.text('EFECTO', W / 2, 116, { align: 'center' });
-
   doc.setDrawColor(201, 168, 76); doc.setLineWidth(0.4);
   doc.line(mg + 30, 126, W - mg - 30, 126);
-
   doc.setFontSize(11); doc.setFont('helvetica', 'normal'); doc.setTextColor(210, 210, 210);
   const titLines = doc.splitTextToSize(diag.titulo_diagnostico.toUpperCase(), ancho - 20);
   doc.text(titLines, W / 2, 136, { align: 'center' });
-
   doc.setFontSize(8); doc.setTextColor(150, 150, 150);
   doc.text(`Preparado exclusivamente para: ${datos.nombre}`, W / 2, 158, { align: 'center' });
   doc.text('RAÚL M. CÁNOVAS · Método CAUSA & EFECTO', W / 2, 165, { align: 'center' });
   doc.setFontSize(7);
   doc.text('www.raulcanovas.com  ·  @raulm.canovas', W / 2, 172, { align: 'center' });
-
   const ib = diag.indice_bloqueo;
   doc.setFontSize(7); doc.setTextColor(150, 150, 150);
   doc.text(`ÍNDICE DE BLOQUEO ACTUAL: ${ib}/100`, W / 2, 186, { align: 'center' });
@@ -141,44 +202,33 @@ async function generarPDF(datos, diag) {
   // ── PÁGINA 2: DIAGNÓSTICO ──
   addPage();
   let cy = mg + 8;
-
   doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(201, 168, 76);
   doc.text('DIAGNÓSTICO · LO QUE ESTÁ PASANDO DE VERDAD', mg + 10, cy); cy += 7;
   doc.setDrawColor(201, 168, 76); doc.setLineWidth(0.3); doc.line(mg + 10, cy, W - mg, cy); cy += 7;
-
   doc.setFontSize(13); doc.setFont('helvetica', 'bold'); doc.setTextColor(245, 244, 240);
   const dt = doc.splitTextToSize(diag.titulo_diagnostico, ancho - 8);
   doc.text(dt, mg + 10, cy); cy += dt.length * 6 + 4;
-
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(190, 190, 190);
   cy = wrapText(diag.perfil_bloqueo, mg + 10, cy, ancho - 8, 9.5, [190, 190, 190]); cy += 5;
-
   doc.setFillColor(40, 40, 40); doc.rect(mg + 10, cy, ancho - 8, 0.4, 'F'); cy += 6;
-
   doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(201, 168, 76);
   doc.text('LA CAUSA RAÍZ', mg + 10, cy); cy += 5;
   cy = wrapText(diag.causa_raiz, mg + 10, cy, ancho - 8, 9.5, [200, 200, 200]); cy += 5;
-
   doc.setFillColor(40, 40, 40); doc.rect(mg + 10, cy, ancho - 8, 0.4, 'F'); cy += 6;
-
   doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(201, 168, 76);
   doc.text('EL PATRÓN QUE SE REPITE', mg + 10, cy); cy += 5;
   cy = wrapText(diag.patron_repeticion, mg + 10, cy, ancho - 8, 9.5, [200, 200, 200]);
 
-  // ── PÁGINA 3: PLAN ──
+  // ── PÁGINA 3+: PLAN ──
   addPage();
   cy = mg + 8;
-
   doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(201, 168, 76);
   doc.text('TU HOJA DE RUTA PERSONALIZADA', mg + 10, cy); cy += 7;
   doc.setDrawColor(201, 168, 76); doc.setLineWidth(0.3); doc.line(mg + 10, cy, W - mg, cy); cy += 7;
 
   diag.bloques_prioritarios.forEach((bloque) => {
-    cy = checkPage(cy, 50);
-
+    cy = checkPage(cy, 55);
     doc.setFontSize(6.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(201, 168, 76);
     doc.text(`PASO ${bloque.orden} DE TU PROCESO`, mg + 10, cy); cy += 5;
-
     doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(245, 244, 240);
     const caps = Array.isArray(bloque.caps) ? bloque.caps.join(', ') : bloque.caps;
     const bloqueNombre = doc.splitTextToSize(bloque.bloque, ancho - 40);
@@ -186,30 +236,22 @@ async function generarPDF(datos, diag) {
     doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(140, 140, 140);
     doc.text(`Caps. ${caps}`, W - mg, cy, { align: 'right' });
     cy += bloqueNombre.length * 5.5 + 3;
-
-    cy = wrapText(bloque.por_que, mg + 10, cy, ancho - 8, 9, [185, 185, 185]);
-    cy += 2;
-
+    cy = wrapText(bloque.por_que, mg + 10, cy, ancho - 8, 9, [185, 185, 185]); cy += 2;
     doc.setFontSize(7.5); doc.setFont('helvetica', 'italic'); doc.setTextColor(120, 120, 120);
     const bc = doc.splitTextToSize(`Base científica: ${bloque.base_cientifica}`, ancho - 8);
-    doc.text(bc, mg + 10, cy);
-    cy += bc.length * 4 + 7;
+    doc.text(bc, mg + 10, cy); cy += bc.length * 4 + 8;
   });
 
-  cy = checkPage(cy, 40);
+  cy = checkPage(cy, 45);
   doc.setDrawColor(60, 60, 60); doc.setLineWidth(0.3); doc.line(mg + 10, cy, W - mg, cy); cy += 7;
-
   doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(201, 168, 76);
   doc.text('TU PRIMER PASO CONCRETO — ESTA SEMANA', mg + 10, cy); cy += 5;
-  doc.setFont('helvetica', 'normal');
   cy = wrapText(diag.primer_paso, mg + 10, cy, ancho - 8, 9.5, [205, 205, 205]); cy += 4;
-
   doc.setFontSize(7.5); doc.setTextColor(140, 140, 140);
   const tiempoLines = doc.splitTextToSize(`Tiempo estimado para resultados visibles: ${diag.tiempo_estimado}`, ancho - 8);
   doc.text(tiempoLines, mg + 10, cy); cy += tiempoLines.length * 4 + 10;
 
-  // Frase cierre — caja dorada
-  cy = checkPage(cy, 30);
+  cy = checkPage(cy, 32);
   const fraseCompleta = `"${diag.frase_cierre}"`;
   doc.setFontSize(10); doc.setFont('helvetica', 'bolditalic');
   const flines = doc.splitTextToSize(fraseCompleta, ancho - 20);
@@ -217,35 +259,22 @@ async function generarPDF(datos, diag) {
   doc.setDrawColor(201, 168, 76); doc.setLineWidth(0.5);
   doc.rect(mg + 10, cy, ancho - 8, bH, 'S');
   doc.setTextColor(201, 168, 76);
-  doc.text(flines, mg + 15, cy + 9);
-  cy += bH + 12;
+  doc.text(flines, mg + 15, cy + 9); cy += bH + 12;
 
   // ── PÁGINA FINAL: CTA ──
   addPage();
   cy = 45;
-
   doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(130, 130, 130);
   doc.text('EL DIAGNÓSTICO ES EL MAPA. EL LIBRO ES EL CAMINO.', W / 2, cy, { align: 'center' }); cy += 14;
-
   doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.setTextColor(245, 244, 240);
   doc.text('Ahora sabes lo que está pasando.', W / 2, cy, { align: 'center' }); cy += 10;
   doc.setTextColor(201, 168, 76);
   doc.text('La pregunta es qué vas a hacer con ello.', W / 2, cy, { align: 'center' }); cy += 14;
-
   doc.setFontSize(9.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(185, 185, 185);
-  const ctaTxt1 = doc.splitTextToSize(
-    'Este diagnóstico te ha mostrado el patrón. Pero un mapa sin ruta no lleva a ningún sitio.',
-    ancho - 20
-  );
+  const ctaTxt1 = doc.splitTextToSize('Este diagnóstico te ha mostrado el patrón. Pero un mapa sin ruta no lleva a ningún sitio.', ancho - 20);
   doc.text(ctaTxt1, W / 2, cy, { align: 'center' }); cy += ctaTxt1.length * 5 + 5;
-
-  const ctaTxt2 = doc.splitTextToSize(
-    'Los 27 pasos del método CAUSA & EFECTO son el sistema completo para que el cambio no dependa de la motivación — que sube y baja — sino de una estructura que funciona incluso los días en que no tienes ganas. Cada capítulo es una herramienta concreta. No teoría. No autoayuda genérica. Un método probado para que dejes de vivir la vida que te tocó y empieces a gobernar la que elegiste.',
-    ancho - 20
-  );
+  const ctaTxt2 = doc.splitTextToSize('Los 27 pasos del método CAUSA & EFECTO son el sistema completo para que el cambio no dependa de la motivación — que sube y baja — sino de una estructura que funciona incluso los días en que no tienes ganas. Cada capítulo es una herramienta concreta. No teoría. No autoayuda genérica. Un método probado para que dejes de vivir la vida que te tocó y empieces a gobernar la que elegiste.', ancho - 20);
   doc.text(ctaTxt2, W / 2, cy, { align: 'center' }); cy += ctaTxt2.length * 5 + 12;
-
-  // Caja CTA libro
   doc.setDrawColor(201, 168, 76); doc.setLineWidth(0.5);
   doc.rect(mg + 20, cy, ancho - 40, 22, 'S');
   doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(201, 168, 76);
@@ -253,30 +282,18 @@ async function generarPDF(datos, diag) {
   doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(180, 180, 180);
   doc.text('www.raulcanovas.com  ·  Amazon KDP  ·  IngramSpark', W / 2, cy + 16, { align: 'center' });
   cy += 30;
-
-  // Separador
   doc.setDrawColor(50, 50, 50); doc.setLineWidth(0.3); doc.line(mg + 20, cy, W - mg - 20, cy); cy += 10;
-
-  // Instagram CTA
   doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(201, 168, 76);
   doc.text('¿Quieres contenido que cambie cómo piensas cada semana?', W / 2, cy, { align: 'center' }); cy += 7;
-
   doc.setFontSize(8.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(170, 170, 170);
-  const igTxt = doc.splitTextToSize(
-    'Sígueme en Instagram donde comparto estrategias reales, sin filtros y sin autoayuda de pacotilla, para que empieces a tomar el control de tu mente, tu tiempo y tu vida.',
-    ancho - 20
-  );
+  const igTxt = doc.splitTextToSize('Sígueme en Instagram donde comparto estrategias reales, sin filtros y sin autoayuda de pacotilla, para que empieces a tomar el control de tu mente, tu tiempo y tu vida.', ancho - 20);
   doc.text(igTxt, W / 2, cy, { align: 'center' }); cy += igTxt.length * 5 + 8;
-
-  // Caja Instagram
   doc.setFillColor(25, 25, 25);
   doc.rect(mg + 30, cy, ancho - 60, 16, 'F');
   doc.setDrawColor(201, 168, 76); doc.setLineWidth(0.4);
   doc.rect(mg + 30, cy, ancho - 60, 16, 'S');
   doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(201, 168, 76);
-  doc.text('@raulm.canovas', W / 2, cy + 10, { align: 'center' });
-  cy += 24;
-
+  doc.text('@raulm.canovas', W / 2, cy + 10, { align: 'center' }); cy += 24;
   doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(90, 90, 90);
   doc.text('RAÚL M. CÁNOVAS · CAUSA & EFECTO · Todos los derechos reservados', W / 2, cy, { align: 'center' });
 
@@ -421,7 +438,7 @@ export default function BotAntiAnhelo() {
                     <h3>Tu Diagnóstico Personal</h3>
                     <p>{diagnostico?.titulo_diagnostico} · Para {datos.nombre}</p>
                     <button className="pdf-btn" onClick={handleDescargar} disabled={descargando}>{descargando ? 'Generando...' : '⬇ DESCARGAR MI INFORME'}</button>
-                    <div className="book-link">El método completo en el libro → <a href="https://www.raulcanovas.com" target="_blank" rel="noopener noreferrer">www.raulcanovas.com</a></div>
+                    <div className="book-link">El método completo → <a href="https://www.raulcanovas.com" target="_blank" rel="noopener noreferrer">www.raulcanovas.com</a></div>
                   </div>
                 </div>
               );
