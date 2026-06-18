@@ -276,13 +276,16 @@ async function generarPDF(datos, diag) {
   const ctaTxt2 = doc.splitTextToSize('Los 27 pasos del método CAUSA & EFECTO son el sistema completo para que el cambio no dependa de la motivación — que sube y baja — sino de una estructura que funciona incluso los días en que no tienes ganas. Cada capítulo es una herramienta concreta. No teoría. No autoayuda genérica. Un método probado para que dejes de vivir la vida que te tocó y empieces a gobernar la que elegiste.', ancho - 20);
   doc.text(ctaTxt2, W / 2, cy, { align: 'center' }); cy += ctaTxt2.length * 5 + 12;
 
-  // ── BOTÓN CTA — INSTAGRAM PROVISIONAL (cambiar por URL Amazon KDP cuando esté aprobado) ──
+  // ── BOTÓN CTA — ENLACE REAL DE COMPRA EN AMAZON ──
+  const AMAZON_URL = 'https://www.amazon.es/dp/B0H5FS71XT';
   doc.setDrawColor(201, 168, 76); doc.setLineWidth(0.5);
-  doc.rect(mg + 20, cy, ancho - 40, 22, 'S');
-  doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(201, 168, 76);
-  doc.text('SÍGUEME MIENTRAS EL LIBRO LLEGA', W / 2, cy + 9, { align: 'center' });
-  doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(180, 180, 180);
-  doc.text('instagram.com/raulm.canovas  ·  @raulm.canovas', W / 2, cy + 16, { align: 'center' });
+  doc.setFillColor(201, 168, 76);
+  doc.rect(mg + 20, cy, ancho - 40, 22, 'FD');
+  doc.setFontSize(13); doc.setFont('helvetica', 'bold'); doc.setTextColor(13, 13, 13);
+  doc.text('REGÁLATE EL CAMBIO →', W / 2, cy + 10, { align: 'center' });
+  doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(40, 40, 40);
+  doc.text('CAUSA & EFECTO · Disponible en Amazon (eBook y tapa blanda)', W / 2, cy + 17, { align: 'center' });
+  doc.link(mg + 20, cy, ancho - 40, 22, { url: AMAZON_URL });
   cy += 30;
 
   doc.setDrawColor(50, 50, 50); doc.setLineWidth(0.3); doc.line(mg + 20, cy, W - mg - 20, cy); cy += 10;
@@ -441,8 +444,8 @@ export default function BotAntiAnhelo() {
                     <h3>Tu Diagnóstico Personal</h3>
                     <p>{diagnostico?.titulo_diagnostico} · Para {datos.nombre}</p>
                     <button className="pdf-btn" onClick={handleDescargar} disabled={descargando}>{descargando ? 'Generando...' : '⬇ DESCARGAR MI INFORME'}</button>
-                    {/* ── ENLACE PROVISIONAL → INSTAGRAM. Cambiar por URL Amazon KDP cuando esté aprobado ── */}
-                    <div className="book-link">Contenido sin filtros mientras llega el libro → <a href="https://www.instagram.com/raulm.canovas" target="_blank" rel="noopener noreferrer">@raulm.canovas</a></div>
+                    {/* ── ENLACE REAL DE COMPRA EN AMAZON ── */}
+                    <div className="book-link">¿Lista tu próxima versión? → <a href="https://www.amazon.es/dp/B0H5FS71XT" target="_blank" rel="noopener noreferrer">REGÁLATE EL CAMBIO</a></div>
                   </div>
                 </div>
               );
