@@ -278,30 +278,48 @@ async function generarPDF(datos, diag) {
 
   // ── BOTÓN CTA — ENLACE REAL DE COMPRA EN AMAZON ──
   const AMAZON_URL = 'https://www.amazon.es/dp/B0H5FS71XT';
+  const btnAmazonY = cy, btnAmazonH = 22;
   doc.setDrawColor(201, 168, 76); doc.setLineWidth(0.5);
   doc.setFillColor(201, 168, 76);
-  doc.rect(mg + 20, cy, ancho - 40, 22, 'FD');
+  doc.rect(mg + 20, btnAmazonY, ancho - 40, btnAmazonH, 'FD');
   doc.setFontSize(13); doc.setFont('helvetica', 'bold'); doc.setTextColor(13, 13, 13);
-  doc.text('REGÁLATE EL CAMBIO →', W / 2, cy + 10, { align: 'center' });
+  doc.text('REGALATE EL CAMBIO', W / 2, btnAmazonY + 10, { align: 'center' });
   doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(40, 40, 40);
-  doc.text('CAUSA & EFECTO · Disponible en Amazon (eBook y tapa blanda)', W / 2, cy + 17, { align: 'center' });
-  doc.link(mg + 20, cy, ancho - 40, 22, { url: AMAZON_URL });
-  cy += 30;
+  doc.text('CAUSA & EFECTO - Disponible en Amazon (eBook y tapa blanda)', W / 2, btnAmazonY + 17, { align: 'center' });
+  doc.link(mg + 20, btnAmazonY, ancho - 40, btnAmazonH, { url: AMAZON_URL });
+  cy = btnAmazonY + btnAmazonH + 8;
 
   doc.setDrawColor(50, 50, 50); doc.setLineWidth(0.3); doc.line(mg + 20, cy, W - mg - 20, cy); cy += 10;
   doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(201, 168, 76);
-  doc.text('¿Quieres contenido que cambie cómo piensas cada semana?', W / 2, cy, { align: 'center' }); cy += 7;
+  doc.text('Quieres contenido que cambie como piensas cada semana?', W / 2, cy, { align: 'center' }); cy += 7;
   doc.setFontSize(8.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(170, 170, 170);
-  const igTxt = doc.splitTextToSize('Sígueme en Instagram donde comparto estrategias reales, sin filtros y sin autoayuda de pacotilla, para que empieces a tomar el control de tu mente, tu tiempo y tu vida.', ancho - 20);
+  const igTxt = doc.splitTextToSize('Sigueme en Instagram donde comparto estrategias reales, sin filtros y sin autoayuda de pacotilla, para que empieces a tomar el control de tu mente, tu tiempo y tu vida.', ancho - 20);
   doc.text(igTxt, W / 2, cy, { align: 'center' }); cy += igTxt.length * 5 + 8;
+
+  // ── BLOQUE INSTAGRAM CLICKABLE — icono simple a la izquierda del texto, sin desplazamientos manuales ──
+  const IG_URL = 'https://www.instagram.com/raulm.canovas';
+  const igBoxY = cy, igBoxH = 18, igBoxX = mg + 30, igBoxW = ancho - 60;
   doc.setFillColor(25, 25, 25);
-  doc.rect(mg + 30, cy, ancho - 60, 16, 'F');
+  doc.rect(igBoxX, igBoxY, igBoxW, igBoxH, 'F');
   doc.setDrawColor(201, 168, 76); doc.setLineWidth(0.4);
-  doc.rect(mg + 30, cy, ancho - 60, 16, 'S');
+  doc.rect(igBoxX, igBoxY, igBoxW, igBoxH, 'S');
+
+  // Icono Instagram simple: cuadrado redondeado con circulo dentro, a la izquierda del texto
+  const icSize = 6, icMargin = 8;
+  const icX = igBoxX + icMargin, icY = igBoxY + (igBoxH - icSize) / 2;
+  doc.setDrawColor(201, 168, 76); doc.setLineWidth(0.5);
+  doc.roundedRect(icX, icY, icSize, icSize, 1.5, 1.5, 'S');
+  doc.circle(icX + icSize / 2, icY + icSize / 2, icSize * 0.28, 'S');
+  doc.setFillColor(201, 168, 76);
+  doc.circle(icX + icSize * 0.78, icY + icSize * 0.22, 0.45, 'F');
+
   doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(201, 168, 76);
-  doc.text('@raulm.canovas', W / 2, cy + 10, { align: 'center' }); cy += 24;
+  doc.text('@raulm.canovas', igBoxX + igBoxW / 2 + 3, igBoxY + igBoxH / 2 + 1.5, { align: 'center' });
+  doc.link(igBoxX, igBoxY, igBoxW, igBoxH, { url: IG_URL });
+  cy = igBoxY + igBoxH + 8;
+
   doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(90, 90, 90);
-  doc.text('RAÚL M. CÁNOVAS · CAUSA & EFECTO · Todos los derechos reservados', W / 2, cy, { align: 'center' });
+  doc.text('RAUL M. CANOVAS - CAUSA & EFECTO - Todos los derechos reservados', W / 2, cy, { align: 'center' });
 
   doc.save(`Diagnostico_CausaEfecto_${datos.nombre.replace(/\s+/g, '_')}.pdf`);
 }
@@ -378,7 +396,19 @@ export default function BotAntiAnhelo() {
   };
 
   const handleTexto = () => { const val = inputVal.trim(); if (!val || bloqueado) return; setInputVal(''); handleRespuesta(val, val); };
-  const handleEmail = () => { const e = emailVal.trim(); if (!e || !e.includes('@')) return; setEmailEnviado(true); addMsg('user', e); setTimeout(() => addMsg('bot', '__PDF__'), 700); };
+  const handleEmail = () => {
+    const e = emailVal.trim();
+    if (!e || !e.includes('@')) return;
+    setEmailEnviado(true);
+    addMsg('user', e);
+    // Registrar el email en Brevo en segundo plano, sin bloquear la experiencia del usuario
+    fetch('/api/suscribir', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: e, nombre: datos.nombre || '' }),
+    }).catch(err => console.error('Error registrando en Brevo:', err));
+    setTimeout(() => addMsg('bot', '__PDF__'), 700);
+  };
   const handleDescargar = async () => { if (!diagnostico || descargando) return; setDescargando(true); try { await generarPDF(datos, diagnostico); } catch (e) { setErrorMsg('Error al generar el PDF. Inténtalo de nuevo.'); } setDescargando(false); };
 
   const pregActual = paso < PREGUNTAS.length ? PREGUNTAS[paso] : null;
