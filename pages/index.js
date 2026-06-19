@@ -396,18 +396,28 @@ export default function BotAntiAnhelo() {
   };
 
   const handleTexto = () => { const val = inputVal.trim(); if (!val || bloqueado) return; setInputVal(''); handleRespuesta(val, val); };
-  const handleEmail = () => {
+  const handleEmail = async () => {
     const e = emailVal.trim();
     if (!e || !e.includes('@')) return;
     setEmailEnviado(true);
     addMsg('user', e);
-    // Registrar el email en Brevo en segundo plano, sin bloquear la experiencia del usuario
-    fetch('/api/suscribir', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: e, nombre: datos.nombre || '' }),
-    }).catch(err => console.error('Error registrando en Brevo:', err));
-    setTimeout(() => addMsg('bot', '__PDF__'), 700);
+    try {
+      const res = await fetch('/api/suscribir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: e, nombre: datos.nombre || '' }),
+      });
+      const data = await res.json();
+      if (data.bloqueado) {
+        // Mensaje de bloqueo — ya tiene un análisis con este email
+        setTimeout(() => addMsg('bot', 'Tu análisis ya existe. Fue creado específicamente para ti y no cambia con una segunda vuelta — los patrones que el método detectó no desaparecen por repetir el diagnóstico. Lo que sigue es una sola cosa: el libro. 27 pasos para que dejes de analizar tu situación y empieces a cambiarla.\n\n→ amazon.es/dp/B0H5FS71XT'), 700);
+      } else {
+        setTimeout(() => addMsg('bot', '__PDF__'), 700);
+      }
+    } catch (err) {
+      console.error('Error en suscribir:', err);
+      setTimeout(() => addMsg('bot', '__PDF__'), 700);
+    }
   };
   const handleDescargar = async () => { if (!diagnostico || descargando) return; setDescargando(true); try { await generarPDF(datos, diagnostico); } catch (e) { setErrorMsg('Error al generar el PDF. Inténtalo de nuevo.'); } setDescargando(false); };
 
