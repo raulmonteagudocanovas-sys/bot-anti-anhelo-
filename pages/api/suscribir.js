@@ -1,5 +1,5 @@
 // Este archivo va en: pages/api/suscribir.js
-// Version completa con bloqueo por email, registro en Brevo y email de bienvenida impactante
+// Version completa con bloqueo REAL por email Y por IP, registro en Brevo y email de bienvenida
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -12,9 +12,12 @@ export default async function handler(req, res) {
   if (!BREVO_API_KEY) return res.status(500).json({ error: "Configuracion incompleta" });
 
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+  // Convertimos la IP en un "email tecnico" para poder usarla como clave de busqueda en Brevo
+  // (Brevo indexa contactos por email de forma instantanea, no asi por atributos personalizados)
+  const ipKey = `ip-${ip.replace(/[^a-zA-Z0-9.]/g, '-')}@control.interno`;
 
   try {
-    // Verificar si el email ya existe y ya uso el bot
+    // 1. Verificar bloqueo por EMAIL
     const checkEmail = await fetch(`https://api.brevo.com/v3/contacts/${encodeURIComponent(email)}`, {
       method: "GET",
       headers: { "api-key": BREVO_API_KEY },
@@ -23,11 +26,25 @@ export default async function handler(req, res) {
     if (checkEmail.status === 200) {
       const contactData = await checkEmail.json();
       if (contactData.attributes?.BOT_USADO === true) {
-        return res.status(200).json({ ok: false, bloqueado: true });
+        return res.status(200).json({ ok: false, bloqueado: true, motivo: 'email' });
       }
     }
 
-    // Registrar en Brevo
+    // 2. Verificar bloqueo por IP (solo si la IP es conocida, ignoramos 'unknown')
+    if (ip !== 'unknown') {
+      const checkIp = await fetch(`https://api.brevo.com/v3/contacts/${encodeURIComponent(ipKey)}`, {
+        method: "GET",
+        headers: { "api-key": BREVO_API_KEY },
+      });
+      if (checkIp.status === 200) {
+        const ipData = await checkIp.json();
+        if (ipData.attributes?.BOT_USADO === true) {
+          return res.status(200).json({ ok: false, bloqueado: true, motivo: 'ip' });
+        }
+      }
+    }
+
+    // 3. Registrar el email real en la lista de lectores
     const brevoRes = await fetch("https://api.brevo.com/v3/contacts", {
       method: "POST",
       headers: { "Content-Type": "application/json", "api-key": BREVO_API_KEY },
@@ -50,6 +67,29 @@ export default async function handler(req, res) {
             listIds: [BREVO_LIST_ID],
           }),
         });
+      }
+    }
+
+    // 4. Registrar el "contacto tecnico" de control de IP (NO entra en la lista de lectores, es solo control interno)
+    if (ip !== 'unknown') {
+      const ipRegRes = await fetch("https://api.brevo.com/v3/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "api-key": BREVO_API_KEY },
+        body: JSON.stringify({
+          email: ipKey,
+          attributes: { BOT_USADO: true, EMAIL_ASOCIADO: email },
+          updateEnabled: true,
+        }),
+      });
+      if (ipRegRes.status === 400) {
+        const ipErrData = await ipRegRes.json().catch(() => ({}));
+        if (ipErrData.code === "duplicate_parameter") {
+          await fetch(`https://api.brevo.com/v3/contacts/${encodeURIComponent(ipKey)}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", "api-key": BREVO_API_KEY },
+            body: JSON.stringify({ attributes: { BOT_USADO: true, EMAIL_ASOCIADO: email } }),
+          });
+        }
       }
     }
 
@@ -145,7 +185,7 @@ export default async function handler(req, res) {
 </body>
 </html>`;
 
-    await fetch("https://api.brevo.com/v3/smtp/email", {
+    const emailRes = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: { "Content-Type": "application/json", "api-key": BREVO_API_KEY },
       body: JSON.stringify({
@@ -156,7 +196,15 @@ export default async function handler(req, res) {
       }),
     });
 
-    return res.status(200).json({ ok: true });
+    const emailResBody = await emailRes.json().catch(() => ({}));
+
+    if (!emailRes.ok) {
+      console.error("BREVO EMAIL FALLO - status:", emailRes.status, "body:", JSON.stringify(emailResBody));
+      return res.status(200).json({ ok: true, emailEnviado: false, emailError: emailResBody });
+    }
+
+    console.log("BREVO EMAIL OK - messageId:", emailResBody.messageId);
+    return res.status(200).json({ ok: true, emailEnviado: true });
 
   } catch (error) {
     console.error("Error:", error.message);
