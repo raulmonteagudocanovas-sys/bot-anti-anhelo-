@@ -10,6 +10,13 @@ const PREGUNTAS = [
     clave: 'nombre',
   },
   {
+    id: 'email',
+    bot: (d) => `${d.nombre}, antes de continuar necesito tu email — ahí te enviaré tu informe completo al terminar.`,
+    tipo: 'email',
+    placeholder: 'tu@email.com',
+    clave: 'email',
+  },
+  {
     id: 'edad',
     bot: (d) => `${d.nombre}, bien.\n\nUna cosa antes de entrar en materia. ¿En qué etapa vital estás ahora mismo?`,
     tipo: 'opciones',
@@ -362,6 +369,29 @@ export default function BotAntiAnhelo() {
     const nuevosDatos = { ...datos, [pregActual.clave]: valor };
     setDatos(nuevosDatos);
     addMsg('user', label || valor);
+
+    // Comprobación de bloqueo justo al recibir el email — ANTES de gastar nada en el diagnóstico
+    if (pregActual.clave === 'email') {
+      setGenerando(true);
+      try {
+        const checkRes = await fetch('/api/verificar-bloqueo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: valor }),
+        });
+        const checkData = await checkRes.json();
+        setGenerando(false);
+        if (checkData.bloqueado) {
+          await botDice('Tu análisis ya existe. Fue creado específicamente para ti y no cambia con una segunda vuelta — los patrones que el método detectó no desaparecen por repetir el diagnóstico. Lo que sigue es una sola cosa: el libro. 27 pasos para que dejes de analizar tu situación y empieces a cambiarla.\n\n→ amazon.es/dp/B0H5FS71XT', 800);
+          setBloqueado(true);
+          return;
+        }
+      } catch (err) {
+        console.error('Error verificando bloqueo:', err);
+        setGenerando(false);
+      }
+    }
+
     const siguiente = paso + 1;
     if (siguiente < PREGUNTAS.length) {
       setPaso(siguiente);
@@ -385,7 +415,13 @@ export default function BotAntiAnhelo() {
         setGenerando(false);
         await botDice(`He terminado el análisis.\n\n**${diag.titulo_diagnostico}**\n\n${diag.perfil_bloqueo}`, 700);
         await new Promise(r => setTimeout(r, 600));
-        addMsg('bot', '__EMAIL__');
+        // Ya tenemos el email — registrar en Brevo y enviar bienvenida directamente, sin volver a pedirlo
+        fetch('/api/suscribir', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: nuevosDatos.email, nombre: nuevosDatos.nombre || '' }),
+        }).catch(err => console.error('Error en suscribir:', err));
+        addMsg('bot', '__PDF__');
       } catch (e) {
         setGenerando(false);
         setErrorMsg('Algo ha fallado. Por favor recarga la página e inténtalo de nuevo.');
@@ -395,34 +431,17 @@ export default function BotAntiAnhelo() {
     }
   };
 
-  const handleTexto = () => { const val = inputVal.trim(); if (!val || bloqueado) return; setInputVal(''); handleRespuesta(val, val); };
-  const handleEmail = async () => {
-    const e = emailVal.trim();
-    if (!e || !e.includes('@')) return;
-    setEmailEnviado(true);
-    addMsg('user', e);
-    try {
-      const res = await fetch('/api/suscribir', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: e, nombre: datos.nombre || '' }),
-      });
-      const data = await res.json();
-      if (data.bloqueado) {
-        // Mensaje de bloqueo — ya tiene un análisis con este email
-        setTimeout(() => addMsg('bot', 'Tu análisis ya existe. Fue creado específicamente para ti y no cambia con una segunda vuelta — los patrones que el método detectó no desaparecen por repetir el diagnóstico. Lo que sigue es una sola cosa: el libro. 27 pasos para que dejes de analizar tu situación y empieces a cambiarla.\n\n→ amazon.es/dp/B0H5FS71XT'), 700);
-      } else {
-        setTimeout(() => addMsg('bot', '__PDF__'), 700);
-      }
-    } catch (err) {
-      console.error('Error en suscribir:', err);
-      setTimeout(() => addMsg('bot', '__PDF__'), 700);
-    }
+  const handleTexto = () => {
+    const val = inputVal.trim();
+    if (!val || bloqueado) return;
+    if (pregActual?.tipo === 'email' && !val.includes('@')) return;
+    setInputVal('');
+    handleRespuesta(val, val);
   };
   const handleDescargar = async () => { if (!diagnostico || descargando) return; setDescargando(true); try { await generarPDF(datos, diagnostico); } catch (e) { setErrorMsg('Error al generar el PDF. Inténtalo de nuevo.'); } setDescargando(false); };
 
   const pregActual = paso < PREGUNTAS.length ? PREGUNTAS[paso] : null;
-  const esperandoTexto = pregActual?.tipo === 'texto' && !typing && !bloqueado;
+  const esperandoTexto = (pregActual?.tipo === 'texto' || pregActual?.tipo === 'email') && !typing && !bloqueado;
   const esperandoOpciones = pregActual?.tipo === 'opciones' && !typing && !bloqueado;
   const particulas = Array.from({ length: 16 }, (_, i) => ({ key: i, left: `${5 + i * 6}%`, delay: `${(i * 0.8) % 12}s`, duration: `${11 + (i * 1.3) % 10}s` }));
 
@@ -454,23 +473,6 @@ export default function BotAntiAnhelo() {
         <div className="chat-container">
           <div className="messages-scroll" ref={scrollRef}>
             {mensajes.map(m => {
-              if (m.contenido === '__EMAIL__') return (
-                <div key={m.id}>
-                  <div className="msg"><div className="avatar bot">C&E</div>
-                    <div className="bubble bot">
-                      <p>Tu informe completo está listo.</p>
-                      <p>Antes de descargarlo, dime dónde te lo envío. Solo necesito tu email.</p>
-                    </div>
-                  </div>
-                  {!emailEnviado && <div className="email-box">
-                    <p>Tu diagnóstico es único. Generado solo para ti, en este momento.</p>
-                    <div className="email-row">
-                      <input className="email-input" type="email" placeholder="tu@email.com" value={emailVal} onChange={e => setEmailVal(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleEmail()} />
-                      <button className="email-btn" onClick={handleEmail}>CONTINUAR →</button>
-                    </div>
-                  </div>}
-                </div>
-              );
               if (m.contenido === '__PDF__') return (
                 <div key={m.id}>
                   <div className="msg"><div className="avatar bot">C&E</div>
