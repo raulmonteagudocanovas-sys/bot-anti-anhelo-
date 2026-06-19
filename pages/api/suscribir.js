@@ -149,7 +149,7 @@ export default async function handler(req, res) {
       method: "POST",
       headers: { "Content-Type": "application/json", "api-key": BREVO_API_KEY },
       body: JSON.stringify({
-        sender: { name: "Raul M. Canovas - CAUSA & EFECTO", email: "raulmonteagudocanovas@gmail.com" },
+        sender: { name: "Raul M. Canovas - CAUSA & EFECTO", email: "raul@raulcanovas.com" },
         to: [{ email: email, name: nombreDisplay }],
         subject: `${nombreDisplay}, lo que viste en tu diagnostico es solo la superficie.`,
         htmlContent: emailHtml,
