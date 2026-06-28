@@ -10,6 +10,16 @@ const PREGUNTAS = [
     clave: 'nombre',
   },
   {
+    id: 'consentimiento',
+    bot: (d) => `${d.nombre}, antes de pedirte tu email tengo que decirte esto.\n\nVoy a usar tu email solo para enviarte tu informe personalizado y, si quieres, futuras comunicaciones mías. Nunca lo comparto con nadie ni lo uso para otra cosa.\n\nPolítica completa: bot-anti-anhelo.vercel.app/privacidad\n\n¿Aceptas el tratamiento de tus datos?`,
+    tipo: 'opciones',
+    opciones: [
+      { v: 'acepto', t: 'Acepto la Política de Privacidad y el tratamiento de mis datos' },
+      { v: 'no_acepto', t: 'No, prefiero no continuar' },
+    ],
+    clave: 'consentimiento',
+  },
+  {
     id: 'email',
     bot: (d) => `${d.nombre}, antes de continuar necesito tu email — ahí te enviaré tu informe completo al terminar.`,
     tipo: 'email',
@@ -370,6 +380,11 @@ export default function BotAntiAnhelo() {
     setDatos(nuevosDatos);
     addMsg('user', label || valor);
 
+    if (pregActual.clave === 'consentimiento' && valor === 'no_acepto') {
+      await botDice('Lo entiendo, y respeto tu decisión.\n\nSin tu consentimiento no puedo continuar — necesito tu email para generarte el informe, y no voy a pedírtelo sin que lo apruebes antes.\n\nSi cambias de opinión, recarga esta página.', 800);
+      return;
+    }
+
     // Comprobación de bloqueo justo al recibir el email — ANTES de gastar nada en el diagnóstico
     if (pregActual.clave === 'email') {
       setGenerando(true);
@@ -419,7 +434,7 @@ export default function BotAntiAnhelo() {
         fetch('/api/suscribir', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: nuevosDatos.email, nombre: nuevosDatos.nombre || '' }),
+          body: JSON.stringify({ email: nuevosDatos.email, nombre: nuevosDatos.nombre || '', consentimiento: nuevosDatos.consentimiento }),
         }).catch(err => console.error('Error en suscribir:', err));
         addMsg('bot', '__PDF__');
       } catch (e) {
