@@ -1,23 +1,26 @@
 // Este archivo va en: pages/api/suscribir.js
-// Version completa con bloqueo REAL por email Y por IP, registro en Brevo y email de bienvenida
+// Version completa con bloqueo REAL por email Y por IP, validacion de consentimiento RGPD, registro en Brevo y email de bienvenida
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const { email, nombre } = req.body;
+  const { email, nombre, consentimiento } = req.body;
   if (!email || !email.includes('@')) return res.status(400).json({ error: "Email invalido" });
+
+  // VALIDACION RGPD: sin consentimiento expreso, no se procesa nada. Esto protege
+  // contra peticiones directas a esta API que se salten el chat del frontend.
+  if (consentimiento !== 'acepto') {
+    return res.status(400).json({ error: "Consentimiento no proporcionado. No se puede procesar la suscripcion sin aceptacion expresa del tratamiento de datos (RGPD)." });
+  }
 
   const BREVO_API_KEY = process.env.BREVO_API_KEY;
   const BREVO_LIST_ID = 3;
   if (!BREVO_API_KEY) return res.status(500).json({ error: "Configuracion incompleta" });
 
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
-  // Convertimos la IP en un "email tecnico" para poder usarla como clave de busqueda en Brevo
-  // (Brevo indexa contactos por email de forma instantanea, no asi por atributos personalizados)
   const ipKey = `ip-${ip.replace(/[^a-zA-Z0-9.]/g, '-')}@control.interno`;
 
   try {
-    // 1. Verificar bloqueo por EMAIL
     const checkEmail = await fetch(`https://api.brevo.com/v3/contacts/${encodeURIComponent(email)}`, {
       method: "GET",
       headers: { "api-key": BREVO_API_KEY },
@@ -30,7 +33,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // 2. Verificar bloqueo por IP (solo si la IP es conocida, ignoramos 'unknown')
     if (ip !== 'unknown') {
       const checkIp = await fetch(`https://api.brevo.com/v3/contacts/${encodeURIComponent(ipKey)}`, {
         method: "GET",
@@ -44,7 +46,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // 3. Registrar el email real en la lista de lectores
     const brevoRes = await fetch("https://api.brevo.com/v3/contacts", {
       method: "POST",
       headers: { "Content-Type": "application/json", "api-key": BREVO_API_KEY },
@@ -70,7 +71,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // 4. Registrar el "contacto tecnico" de control de IP (NO entra en la lista de lectores, es solo control interno)
     if (ip !== 'unknown') {
       const ipRegRes = await fetch("https://api.brevo.com/v3/contacts", {
         method: "POST",
@@ -93,7 +93,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // Email de bienvenida
     const nombreDisplay = nombre || "ti";
     const emailHtml = `<!DOCTYPE html>
 <html lang="es">
@@ -176,7 +175,8 @@ export default async function handler(req, res) {
 
   <tr><td style="background-color:#0d0d0d;padding:20px 40px;text-align:center;">
     <p style="margin:0;color:#444;font-size:11px;">RA&Uacute;L M. C&Aacute;NOVAS &middot; CAUSA &amp; EFECTO &middot; Todos los derechos reservados</p>
-    <p style="margin:6px 0 0 0;color:#333;font-size:10px;">Recibiste este email porque completaste el diagn&oacute;stico del Bot Anti-Anhelo.</p>
+    <p style="margin:6px 0 0 0;color:#333;font-size:10px;">Recibiste este email porque completaste el diagn&oacute;stico del Bot Anti-Anhelo, tras aceptar expresamente el tratamiento de tus datos.</p>
+    <p style="margin:10px 0 0 0;color:#555;font-size:10px;"><a href="https://raulcanovas.com/privacidad" style="color:#888;text-decoration:underline;">Pol&iacute;tica de privacidad</a> &middot; Para darte de baja, responde a este email con "BAJA".</p>
   </td></tr>
 
 </table>
